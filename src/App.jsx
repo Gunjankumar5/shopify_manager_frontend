@@ -272,7 +272,7 @@ const ProductsPage = ({ toast }) => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("grid");
   const [search, setSearch] = useState("");
-  const [statusF, setStatusF] = useState("active");
+  const [statusF, setStatusF] = useState("all");
   const [sel, setSel] = useState(new Set());
   const [editM, setEditM] = useState(null);
   const [priceM, setPriceM] = useState(false);

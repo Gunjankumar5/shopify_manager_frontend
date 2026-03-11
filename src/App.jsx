@@ -22,7 +22,7 @@ export default function App() {
           overflowX: "hidden",
         }}
       >
-        <Sidebar page={page} set={setPage} />
+        <Sidebar page={page} setPage={setPage} />
         <main
           style={{
             flex: 1,

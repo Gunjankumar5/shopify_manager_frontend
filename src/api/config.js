@@ -1,25 +1,10 @@
-const DEFAULT_ORIGIN = "https://shopifymanagerbackend-production-b50f.up.railway.app";
-const raw = (import.meta.env.VITE_API_BASE_URL || "").trim();
+const origin = (import.meta.env.VITE_API_ORIGIN || "")
+  .trim()
+  .replace(/\/$/, "");
 
-const withProtocol =
-  raw && !raw.startsWith("http://") && !raw.startsWith("https://")
-    ? `https://${raw}`
-    : raw;
-
-// if user sets .../api, normalize back to origin
-const normalizedOrigin = (withProtocol || DEFAULT_ORIGIN)
-  .replace(/\/$/, "")
-  .replace(/\/api$/, "");
-
-export const API_ORIGIN = normalizedOrigin;
-
-// keep old usage working: `${API_BASE_URL}/collections/` => .../api/collections/
+export const API_ORIGIN = origin || "http://127.0.0.1:8000";
 export const API_BASE_URL = `${API_ORIGIN}/api`;
-
-// keep previous export for health checks
-export const API_HEALTH_URL = import.meta.env.DEV
-  ? "/api/health"
-  : `${API_ORIGIN}/health`;
+export const API_HEALTH_URL = `${API_ORIGIN}/health`;
 
 // optional central endpoints for new code
 export const API_ENDPOINTS = {

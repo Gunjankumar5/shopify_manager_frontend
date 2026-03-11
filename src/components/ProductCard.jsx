@@ -6,18 +6,55 @@ const ProductCard = ({ p, sel, onSel, onEdit, onDel }) => {
   const price = p.variants?.[0]?.price;
   const cmp = p.variants?.[0]?.compare_at_price;
   const inv = p.variants?.reduce((s, v) => s + (v.inventory_quantity || 0), 0);
+
+  // Determine inventory status color
+  const getInventoryStatus = () => {
+    if (inv === 0)
+      return {
+        color: "var(--danger)",
+        bg: "rgba(239,68,68,0.1)",
+        label: "Out of stock",
+      };
+    if (inv < 5)
+      return {
+        color: "var(--warning)",
+        bg: "rgba(245,158,11,0.1)",
+        label: `Only ${inv} left`,
+      };
+    return {
+      color: "var(--success)",
+      bg: "rgba(16,185,129,0.1)",
+      label: `${inv} in stock`,
+    };
+  };
+  const invStatus = getInventoryStatus();
+
   return (
     <div
       className="card-hover"
       style={{
         background: "var(--bg-card)",
-        border: `2px solid ${sel ? "var(--accent)" : "var(--border-color)"}`,
-        borderRadius: 20,
+        border: `2px solid ${sel ? "var(--accent)" : "var(--border-strong)"}`,
+        borderRadius: "var(--radius-xl)",
         overflow: "hidden",
         position: "relative",
+        transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+        boxShadow: "var(--shadow-sm)", // subtle default shadow
       }}
     >
-      <div style={{ position: "absolute", top: 12, left: 12, zIndex: 2 }}>
+      {/* Selection checkbox */}
+      <div
+        style={{
+          position: "absolute",
+          top: "var(--space-3)",
+          left: "var(--space-3)",
+          zIndex: 5,
+          background: "rgba(0,0,0,0.3)",
+          borderRadius: "var(--radius-sm)",
+          padding: "2px",
+          backdropFilter: "blur(2px)",
+        }}
+      >
         <input
           type="checkbox"
           className="chk"
@@ -26,93 +63,174 @@ const ProductCard = ({ p, sel, onSel, onEdit, onDel }) => {
           aria-label={`Select ${p.title}`}
         />
       </div>
-      <div style={{ position: "absolute", top: 12, right: 12, zIndex: 2 }}>
+
+      {/* Sale badge (if compare at price exists) */}
+      {cmp && (
+        <div
+          style={{
+            position: "absolute",
+            top: "var(--space-3)",
+            left: "calc(var(--space-8) + 8px)", // positioned after checkbox
+            zIndex: 5,
+            background: "var(--accent)",
+            color: "white",
+            fontSize: "var(--text-xs)",
+            fontWeight: 700,
+            padding: "2px 8px",
+            borderRadius: "var(--radius-full)",
+            boxShadow: "var(--shadow-sm)",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          Sale
+        </div>
+      )}
+
+      {/* Status badge (from props) */}
+      <div
+        style={{
+          position: "absolute",
+          top: "var(--space-3)",
+          right: "var(--space-3)",
+          zIndex: 5,
+        }}
+      >
         <Badge status={p.status} />
       </div>
+
+      {/* Image area with overlay on hover */}
       <div
         style={{
           height: 190,
-          background: "#0d0d14",
+          background: "var(--bg-secondary)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
+          position: "relative",
         }}
       >
         {img ? (
-          <img
-            src={img}
-            alt={p.title}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              transition: "transform 0.4s ease",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.transform = "scale(1.08)")
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          />
+          <>
+            <img
+              src={img}
+              alt={p.title}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transition: "transform 0.3s var(--transition-base)",
+                willChange: "transform",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.08)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "scale(1)")
+              }
+            />
+            {/* Image overlay on hover */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0,0,0,0.3)",
+                opacity: 0,
+                transition: "opacity 0.2s ease",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+              }}
+              className="image-overlay"
+            >
+              <Ico n="eye" size={24} color="white" />
+            </div>
+            <style>{`
+              .card-hover:hover .image-overlay { opacity: 1; }
+            `}</style>
+          </>
         ) : (
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 6,
-              color: "#2a2a3d",
+              gap: "var(--space-1)",
+              color: "var(--border-strong)",
             }}
           >
-            <Ico n="image" size={36} color="#2a2a3d" />
-            <span style={{ fontSize: 11 }}>No image</span>
+            <Ico n="image" size={36} color="var(--border-strong)" />
+            <span style={{ fontSize: "var(--text-xs)" }}>No image</span>
           </div>
         )}
       </div>
-      <div style={{ padding: 16 }}>
-        <h3
-          style={{
-            fontFamily: "'Syne', sans-serif",
-            fontSize: 16,
-            fontWeight: 700,
-            color: "var(--text-primary)",
-            marginBottom: 4,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {p.title}
-        </h3>
-        {p.vendor && (
-          <p
+
+      {/* Content */}
+      <div style={{ padding: "var(--space-4)" }}>
+        {/* Title and vendor with icon */}
+        <div style={{ marginBottom: "var(--space-2)" }}>
+          <h3
             style={{
-              fontSize: 12,
-              color: "var(--text-muted)",
-              marginBottom: 10,
+              fontFamily: "var(--font-display)",
+              fontSize: "var(--text-base)",
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
-            {p.vendor}
-          </p>
-        )}
+            {p.title}
+          </h3>
+          {p.vendor && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "var(--text-xs)",
+                color: "var(--text-muted)",
+                marginTop: "2px",
+              }}
+            >
+              <Ico n="store" size={12} color="var(--text-muted)" />
+              <span>{p.vendor}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Price & stock */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 14,
+            marginBottom: "var(--space-4)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "var(--space-2)",
+              flexWrap: "wrap",
+            }}
+          >
             <span
-              style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)" }}
+              style={{
+                fontSize: "var(--text-lg)",
+                fontWeight: 700,
+                color: "var(--accent)",
+              }}
             >
               {price ? `$${price}` : "—"}
             </span>
             {cmp && (
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: "var(--text-xs)",
                   color: "var(--text-muted)",
                   textDecoration: "line-through",
                 }}
@@ -121,34 +239,43 @@ const ProductCard = ({ p, sel, onSel, onEdit, onDel }) => {
               </span>
             )}
           </div>
+
           <span
             style={{
-              fontSize: 11,
-              color: inv > 0 ? "var(--success)" : "var(--danger)",
-              background:
-                inv > 0 ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-              padding: "3px 8px",
-              borderRadius: 20,
-              fontWeight: 500,
+              fontSize: "var(--text-xs)",
+              color: invStatus.color,
+              background: invStatus.bg,
+              padding: "var(--space-1) var(--space-2)",
+              borderRadius: "var(--radius-full)",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
             }}
           >
-            {inv} in stock
+            {invStatus.label}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: "var(--space-2)" }}>
           <button
             onClick={() => onEdit(p)}
             className="btn btn-secondary"
-            style={{ flex: 1, padding: "8px", fontSize: 13 }}
-            aria-label="Edit"
+            style={{
+              flex: 1,
+              padding: "var(--space-2) var(--space-3)",
+              fontSize: "var(--text-xs)",
+            }}
+            aria-label="Edit product"
+            title="Edit product"
           >
             <Ico n="edit" size={13} color="var(--accent)" /> Edit
           </button>
           <button
             onClick={() => onDel(p.id)}
             className="btn btn-danger"
-            style={{ padding: "8px 10px" }}
-            aria-label="Delete"
+            style={{ padding: "var(--space-2) var(--space-3)" }}
+            aria-label="Delete product"
+            title="Delete product"
           >
             <Ico n="trash" size={13} color="var(--danger)" />
           </button>

@@ -39,7 +39,7 @@ const Sidebar = ({ page, setPage }) => (
           style={{
             width: 40,
             height: 40,
-            borderRadius: 8, // Reduced from 12px
+            borderRadius: 8,
             background: colors.accentGradient,
             display: "flex",
             alignItems: "center",
@@ -82,6 +82,7 @@ const Sidebar = ({ page, setPage }) => (
         { id: "upload", label: "Upload", icon: "upload" },
         { id: "collections", label: "Collections", icon: "collections" },
         { id: "inventory", label: "Inventory", icon: "inventory" },
+        { id: "export", label: "Export", icon: "download" },
       ].map(({ id, label, icon }) => (
         <button
           key={id}
@@ -92,13 +93,11 @@ const Sidebar = ({ page, setPage }) => (
             alignItems: "center",
             gap: 12,
             padding: "10px 14px",
-            borderRadius: 6, // Reduced from 12px
+            borderRadius: 6,
             border: "none",
             cursor: "pointer",
             background:
-              page === id
-                ? `rgba(59, 130, 246, 0.15)` // Softer active background
-                : "transparent",
+              page === id ? `rgba(59, 130, 246, 0.15)` : "transparent",
             color: page === id ? colors.accent : colors.textMuted,
             fontSize: 14,
             fontWeight: page === id ? 600 : 400,
@@ -140,14 +139,14 @@ const Sidebar = ({ page, setPage }) => (
         style={{
           background: colors.bgCard,
           border: `1px solid ${colors.border}`,
-          borderRadius: 8, // Reduced from 14px
+          borderRadius: 8,
           padding: "14px 16px",
         }}
       >
         <div
           style={{
             fontSize: 11,
-            color: "#10B981", // Fresh green
+            color: "#10B981",
             fontWeight: 600,
             marginBottom: 4,
             textTransform: "uppercase",

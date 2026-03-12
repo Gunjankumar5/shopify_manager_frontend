@@ -6,6 +6,7 @@ import ProductsPage from "./pages/ProductsPage";
 import UploadPage from "./pages/UploadPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import InventoryPage from "./pages/InventoryPage";
+import ExportPage from "./pages/ExportPage";
 
 export default function App() {
   const [page, setPage] = useState("products");
@@ -36,6 +37,7 @@ export default function App() {
           {page === "upload" && <UploadPage toast={add} />}
           {page === "collections" && <CollectionsPage />}
           {page === "inventory" && <InventoryPage />}
+          {page === "export" && <ExportPage toast={add} />}
         </main>
       </div>
     </>

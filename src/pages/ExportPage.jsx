@@ -633,9 +633,12 @@ const ExportPage = ({ toast }) => {
       const isLocal =
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1";
+      const apiOrigin =
+        import.meta.env.VITE_API_ORIGIN || "http://127.0.0.1:8000";
+      const wsOrigin = apiOrigin.replace(/^http/, "ws");
       const wsUrl = isLocal
         ? `ws://127.0.0.1:8000/api/export/sync/progress?session=${session_id}`
-        : `wss://${window.location.host}/api/export/sync/progress?session=${session_id}`;
+        : `${wsOrigin}/api/export/sync/progress?session=${session_id}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 

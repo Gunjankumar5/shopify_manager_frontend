@@ -240,7 +240,7 @@ function SyncProgressBar({ syncState, totalRows }) {
 }
 
 // ─── Main ExportPage ──────────────────────────────────────────────────────────
-const ExportPage = ({ toast }) => {
+const ExportPage = ({ toast, activeStore }) => {
   const containerRef = useRef(null);
   const hotRef = useRef(null);
   const rowsRef = useRef([]);
@@ -625,7 +625,11 @@ const ExportPage = ({ toast }) => {
       const startRes = await fetch(`${API_BASE_URL}/export/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows, snapshot: snapshotRef.current }),
+        body: JSON.stringify({
+          rows,
+          snapshot: snapshotRef.current,
+          shop_key: activeStore?.shop_key || null,
+        }),
       });
       if (!startRes.ok) throw new Error(await startRes.text());
       const { session_id } = await startRes.json();

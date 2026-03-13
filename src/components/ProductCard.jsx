@@ -2,7 +2,7 @@ import { Ico } from "./Icons";
 import { Badge } from "./UI";
 
 const ProductCard = ({ p, sel, onSel, onEdit, onDel }) => {
-  const img = p.images?.[0]?.src;
+  const img = p.images?.[0]?.src || p.image?.src;
   const price = p.variants?.[0]?.price;
   const cmp = p.variants?.[0]?.compare_at_price;
   const inv = p.variants?.reduce((s, v) => s + (v.inventory_quantity || 0), 0);

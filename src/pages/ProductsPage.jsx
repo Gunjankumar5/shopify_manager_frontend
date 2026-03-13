@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../api/api";
 import { Ico, Spin } from "../components/Icons";
 import { Badge } from "../components/UI";
-import { EditModal, PriceModal } from "../components/Modals";
+import { PriceModal } from "../components/Modals";
 import ProductCard from "../components/ProductCard";
+import AddProductPage from "./AddProductPage";
 
 const ProductsPage = ({ toast }) => {
   const [products, setProducts] = useState([]);
@@ -12,9 +13,11 @@ const ProductsPage = ({ toast }) => {
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [sel, setSel] = useState(new Set());
-  const [editM, setEditM] = useState(null);
   const [priceM, setPriceM] = useState(false);
   const [deleting, setDeleting] = useState(null);
+
+  // null = list view, true = new product form, object = edit product form
+  const [formMode, setFormMode] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,40 +36,40 @@ const ProductsPage = ({ toast }) => {
     load();
   }, [load]);
 
+  // ── If form is open, render it full-page ─────────────────────────────────
+  if (formMode !== null) {
+    return (
+      <AddProductPage
+        toast={toast}
+        editProduct={formMode === true ? null : formMode}
+        onBack={() => {
+          setFormMode(null);
+          load();
+        }}
+      />
+    );
+  }
+
   const filtered = products.filter(
     (p) =>
       !search ||
       p.title?.toLowerCase().includes(search.toLowerCase()) ||
       p.vendor?.toLowerCase().includes(search.toLowerCase()),
   );
+
   const toggleSel = (id) =>
     setSel((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+
   const selAll = () =>
     setSel(
       sel.size === filtered.length
         ? new Set()
         : new Set(filtered.map((p) => p.id)),
     );
-
-  const handleSave = async (payload) => {
-    try {
-      if (editM?.id) {
-        await api.put(`/products/${editM.id}`, payload);
-        toast("Product updated!");
-      } else {
-        await api.post("/products", payload);
-        toast("Product created!");
-      }
-      setEditM(null);
-      load();
-    } catch {
-      toast("Failed to save", "error");
-    }
-  };
 
   const handleDel = async (id) => {
     if (!window.confirm("Delete this product?")) return;
@@ -176,14 +179,6 @@ const ProductsPage = ({ toast }) => {
 
   return (
     <div className="fade-up container max-w-7xl mx-auto px-4 py-8">
-      {/* Modals (unchanged) */}
-      {editM !== null && (
-        <EditModal
-          product={editM === true ? null : editM}
-          onSave={handleSave}
-          onClose={() => setEditM(null)}
-        />
-      )}
       {priceM && (
         <PriceModal
           count={sel.size}
@@ -202,7 +197,7 @@ const ProductsPage = ({ toast }) => {
         </p>
       </div>
 
-      {/* Stats Cards - ultra compact */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         {[
           {
@@ -244,16 +239,16 @@ const ProductsPage = ({ toast }) => {
         ))}
       </div>
 
-      {/* Toolbar - glass design, extra compact */}
+      {/* Toolbar */}
       <div
         className="flex flex-row flex-wrap items-center gap-2 mb-6 p-2 rounded-xl"
         style={{
-          background: "rgba(26, 26, 30, 0.5)",
+          background: "rgba(26,26,30,0.5)",
           backdropFilter: "blur(8px)",
-          border: "1px solid rgba(58, 58, 68, 0.2)",
+          border: "1px solid rgba(58,58,68,0.2)",
         }}
       >
-        {/* Search - glass style */}
+        {/* Search */}
         <div className="relative flex-1 min-w-[200px] group">
           <div
             className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors"
@@ -275,7 +270,7 @@ const ProductsPage = ({ toast }) => {
             onFocus={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
               e.currentTarget.style.boxShadow =
-                "0 0 0 4px rgba(99, 102, 241, 0.1)";
+                "0 0 0 4px rgba(99,102,241,0.1)";
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = "transparent";
@@ -284,7 +279,7 @@ const ProductsPage = ({ toast }) => {
           />
         </div>
 
-        {/* Status filter - custom select */}
+        {/* Status filter */}
         <div className="relative">
           <select
             value={statusF}
@@ -298,7 +293,7 @@ const ProductsPage = ({ toast }) => {
             onFocus={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
               e.currentTarget.style.boxShadow =
-                "0 0 0 4px rgba(99, 102, 241, 0.1)";
+                "0 0 0 4px rgba(99,102,241,0.1)";
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = "var(--border-strong)";
@@ -324,12 +319,12 @@ const ProductsPage = ({ toast }) => {
           </div>
         </div>
 
-        {/* View toggle - segmented control */}
+        {/* View toggle */}
         <div
           className="flex p-1 rounded-lg"
           style={{
-            background: "rgba(58, 58, 68, 0.2)",
-            border: "1px solid rgba(58, 58, 68, 0.3)",
+            background: "rgba(58,58,68,0.2)",
+            border: "1px solid rgba(58,58,68,0.3)",
           }}
         >
           {[
@@ -353,7 +348,7 @@ const ProductsPage = ({ toast }) => {
           ))}
         </div>
 
-        {/* Action buttons */}
+        {/* Actions */}
         <div className="flex items-center gap-2 ml-auto">
           <button
             onClick={syncShopify}
@@ -376,12 +371,12 @@ const ProductsPage = ({ toast }) => {
           </button>
 
           <button
-            onClick={() => setEditM(true)}
+            onClick={() => setFormMode(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all active:scale-95"
             style={{
               background: "var(--accent-gradient)",
               color: "white",
-              boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+              boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
             }}
           >
             <Ico n="plus" size={14} />
@@ -390,7 +385,7 @@ const ProductsPage = ({ toast }) => {
         </div>
       </div>
 
-      {/* Bulk Actions (unchanged) */}
+      {/* Bulk Actions */}
       {sel.size > 0 && (
         <div className="bg-accent-light border border-accent/25 rounded-lg p-2 mb-3 flex flex-wrap items-center gap-2 fade-up">
           <span className="text-xs font-semibold text-accent">
@@ -442,7 +437,7 @@ const ProductsPage = ({ toast }) => {
         </div>
       )}
 
-      {/* Product Grid/List (unchanged) */}
+      {/* Product Grid/List */}
       {loading ? (
         <div
           className={
@@ -467,7 +462,7 @@ const ProductsPage = ({ toast }) => {
               p={p}
               sel={sel.has(p.id)}
               onSel={toggleSel}
-              onEdit={setEditM}
+              onEdit={() => setFormMode(p)}
               onDel={handleDel}
             />
           ))}
@@ -478,7 +473,6 @@ const ProductsPage = ({ toast }) => {
           )}
         </div>
       ) : (
-        // List view table (unchanged)
         <div className="card overflow-hidden">
           <table className="w-full text-xs">
             <thead className="bg-secondary border-b border-strong">
@@ -497,7 +491,7 @@ const ProductsPage = ({ toast }) => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, i) => {
+              {filtered.map((p) => {
                 const img = p.images?.[0]?.src;
                 const price = p.variants?.[0]?.price;
                 const inv = p.variants?.reduce(
@@ -560,7 +554,7 @@ const ProductsPage = ({ toast }) => {
                     <td className="p-2">
                       <div className="flex gap-1">
                         <button
-                          onClick={() => setEditM(p)}
+                          onClick={() => setFormMode(p)}
                           className="btn btn-secondary"
                           style={{ padding: "4px", fontSize: "0" }}
                           aria-label="Edit"

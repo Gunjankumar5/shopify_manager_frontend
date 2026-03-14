@@ -7,25 +7,31 @@ import ProductsPage from "./pages/ProductsPage";
 import UploadPage from "./pages/UploadPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import InventoryPage from "./pages/InventoryPage";
+import ConnectStore from "./pages/ConnectStore";
 import ExportPage from "./pages/ExportPage";
 
 export default function App() {
   const [page, setPage] = useState("products");
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 1024);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeStore, setActiveStore] = useState(null);
+  const [pageKey, setPageKey] = useState(0);
   const { toasts, add, remove } = useToast();
 
   useEffect(() => {
     const onResize = () => {
       const mobile = window.innerWidth <= 1024;
       setIsMobile(mobile);
-      if (!mobile) {
-        setIsSidebarOpen(false);
-      }
+      if (!mobile) setIsSidebarOpen(false);
     };
-
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setPageKey((k) => k + 1);
+    window.addEventListener("store-switched", handler);
+    return () => window.removeEventListener("store-switched", handler);
   }, []);
 
   const pageTitle = useMemo(() => {
@@ -41,9 +47,19 @@ export default function App() {
 
   const handleSetPage = (nextPage) => {
     setPage(nextPage);
-    if (isMobile) {
-      setIsSidebarOpen(false);
-    }
+    if (isMobile) setIsSidebarOpen(false);
+  };
+
+  const handleStoreConnected = (data) => {
+    setActiveStore({
+      shop_key: data.shop_key,
+      shop_name: data.shop_name,
+      shop: data.shop,
+      is_active: true,
+    });
+    add(`Connected to ${data.shop_name || data.shop}!`, "success");
+    setPage("products");
+    setPageKey((k) => k + 1);
   };
 
   return (
@@ -57,6 +73,8 @@ export default function App() {
           isMobile={isMobile}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          activeStore={activeStore}
+          setActiveStore={setActiveStore}
         />
         {isMobile && isSidebarOpen && (
           <button
@@ -81,11 +99,28 @@ export default function App() {
             </header>
           )}
 
-          {page === "products" && <ProductsPage toast={add} />}
-          {page === "upload" && <UploadPage toast={add} />}
-          {page === "collections" && <CollectionsPage />}
-          {page === "inventory" && <InventoryPage />}
-          {page === "export" && <ExportPage toast={add} />}
+          {page === "products" && (
+            <ProductsPage key={`products-${pageKey}`} toast={add} />
+          )}
+          {page === "upload" && (
+            <UploadPage key={`upload-${pageKey}`} toast={add} />
+          )}
+          {page === "collections" && (
+            <CollectionsPage key={`collections-${pageKey}`} />
+          )}
+          {page === "inventory" && (
+            <InventoryPage key={`inventory-${pageKey}`} />
+          )}
+          {page === "export" && (
+            <ExportPage
+              key={`export-${pageKey}`}
+              toast={add}
+              activeStore={activeStore}
+            />
+          )}
+          {page === "connect" && (
+            <ConnectStore onConnected={handleStoreConnected} />
+          )}
         </main>
       </div>
     </>

@@ -22,19 +22,21 @@ const ProductsPage = ({ toast }) => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const statusParam =
-        statusF && statusF !== "all" ? `?status=${statusF}` : "";
-      const d = await api.get(`/products${statusParam}`);
+      const params = new URLSearchParams({ fetch_all: "true" });
+      if (statusF && statusF !== "all") params.set("status", statusF);
+      const d = await api.get(`/products?${params.toString()}`);
       setProducts(d.products || []);
-    } catch {
-      toast("Failed to load products", "error");
+    } catch (error) {
+      toast(`Failed to load products: ${error.message}`, "error");
     }
     setLoading(false);
-  }, [statusF, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusF]);
 
   useEffect(() => {
     load();
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusF]);
 
   // ── If form is open, render it full-page ─────────────────────────────────
   if (formMode !== null) {
@@ -124,18 +126,6 @@ const ProductsPage = ({ toast }) => {
     toast(`Deleted ${ok}${fail ? `, ${fail} failed` : ""}`);
     setSel(new Set());
     load();
-  };
-
-  const syncShopify = async () => {
-    try {
-      setLoading(true);
-      const d = await api.get("/products/sync");
-      setProducts(d.products || []);
-      toast(`✅ Synced ${d.count} products from Shopify!`);
-    } catch {
-      toast("Failed to sync from Shopify", "error");
-    }
-    setLoading(false);
   };
 
   const handlePriceAdj = async ({ mode, value, dir }) => {
@@ -351,7 +341,7 @@ const ProductsPage = ({ toast }) => {
         {/* Actions */}
         <div className="flex items-center gap-2 ml-auto">
           <button
-            onClick={syncShopify}
+            onClick={load}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all"
             style={{
@@ -367,7 +357,7 @@ const ProductsPage = ({ toast }) => {
             }
           >
             {loading ? <Spin size={14} /> : <Ico n="sync" size={14} />}
-            <span className="hidden sm:inline">Sync</span>
+            <span className="hidden sm:inline">Refresh</span>
           </button>
 
           <button

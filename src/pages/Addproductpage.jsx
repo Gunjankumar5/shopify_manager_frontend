@@ -839,8 +839,8 @@ function StatusDot({ status }) {
 
 // ── Main page ──────────────────────────────────────────────────────────────
 let _varId = 0;
-function newVariant(name = "", price = "", sku = "") {
-  return { _id: ++_varId, name, price, sku };
+function newVariant(name = "", price = "", sku = "", extra = {}) {
+  return { _id: ++_varId, name, price, sku, ...extra };
 }
 
 export default function AddProductPage({ toast, onBack, editProduct }) {
@@ -856,13 +856,23 @@ export default function AddProductPage({ toast, onBack, editProduct }) {
     editProduct?.product_type || "",
   );
   const [price, setPrice] = useState(editProduct?.variants?.[0]?.price || "");
-  const [comparePrice, setComparePrice] = useState("");
-  const [costPerItem, setCostPerItem] = useState("");
-  const [sku, setSku] = useState("");
-  const [barcode, setBarcode] = useState("");
+  const [comparePrice, setComparePrice] = useState(
+    editProduct?.variants?.[0]?.compare_at_price || "",
+  );
+  const [costPerItem, setCostPerItem] = useState(
+    editProduct?.variants?.[0]?.cost || "",
+  );
+  const [sku, setSku] = useState(editProduct?.variants?.[0]?.sku || "");
+  const [barcode, setBarcode] = useState(
+    editProduct?.variants?.[0]?.barcode || "",
+  );
   const [status, setStatus] = useState(editProduct?.status || "draft");
-  const [trackQty, setTrackQty] = useState(false);
-  const [qty, setQty] = useState("0");
+  const [trackQty, setTrackQty] = useState(
+    Boolean(editProduct?.variants?.[0]?.inventory_management),
+  );
+  const [qty, setQty] = useState(
+    String(editProduct?.variants?.[0]?.inventory_quantity ?? "0"),
+  );
   const [isPhysical, setIsPhysical] = useState(true);
   const [weight, setWeight] = useState("");
   const [tags, setTags] = useState(() => {
@@ -875,9 +885,101 @@ export default function AddProductPage({ toast, onBack, editProduct }) {
       .filter(Boolean);
   });
   const [mediaFiles, setMediaFiles] = useState([]);
-  const [variants, setVariants] = useState([newVariant()]);
+  const [variants, setVariants] = useState(() => {
+    const existing = editProduct?.variants || [];
+    if (!existing.length) return [newVariant()];
+    return existing.map((v) =>
+      newVariant(v.option1 || v.title || "", v.price || "", v.sku || "", {
+        id: v.id,
+        compare_at_price: v.compare_at_price || "",
+        barcode: v.barcode || "",
+        inventory_quantity: v.inventory_quantity,
+      }),
+    );
+  });
   const [saving, setSaving] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const descRef = useRef(null);
+
+  useEffect(() => {
+    if (!isEdit || !editProduct?.id) {
+      if (descRef.current) descRef.current.innerHTML = "";
+      return;
+    }
+
+    let mounted = true;
+    const loadFullProduct = async () => {
+      setLoadingDetails(true);
+      try {
+        const res = await api.get(`/products/${editProduct.id}`);
+        const p = res?.product || res;
+        if (!mounted || !p) return;
+
+        setTitle(p.title || "");
+        setVendor(p.vendor || "");
+        setProductType(p.product_type || "");
+        setStatus(p.status || "draft");
+
+        const productVariants = p.variants || [];
+        const first = productVariants[0] || {};
+        setPrice(first.price || "");
+        setComparePrice(first.compare_at_price || "");
+        setCostPerItem(first.cost || "");
+        setSku(first.sku || "");
+        setBarcode(first.barcode || "");
+        setTrackQty(Boolean(first.inventory_management));
+        setQty(String(first.inventory_quantity ?? "0"));
+
+        const parsedTags = Array.isArray(p.tags)
+          ? p.tags
+          : String(p.tags || "")
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean);
+        setTags(parsedTags);
+
+        if (productVariants.length) {
+          setVariants(
+            productVariants.map((v) =>
+              newVariant(
+                v.option1 || v.title || "",
+                v.price || "",
+                v.sku || "",
+                {
+                  id: v.id,
+                  compare_at_price: v.compare_at_price || "",
+                  barcode: v.barcode || "",
+                  inventory_quantity: v.inventory_quantity,
+                },
+              ),
+            ),
+          );
+        }
+
+        setMediaFiles(
+          (p.images || []).map((img) => ({
+            file: null,
+            url: img.src,
+            existing: true,
+          })),
+        );
+
+        if (descRef.current) {
+          descRef.current.innerHTML = p.body_html || "";
+        }
+      } catch {
+        toast("Could not load full product details", "error");
+      } finally {
+        if (mounted) setLoadingDetails(false);
+      }
+    };
+
+    loadFullProduct();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isEdit, editProduct?.id, toast]);
 
   // Margin calc
   const margin = (() => {
@@ -908,16 +1010,39 @@ export default function AddProductPage({ toast, onBack, editProduct }) {
         product_type: productType.trim(),
         status,
         tags: tags.join(", "),
+        published: status === "active",
         variants: variants
           .filter((v) => v.name || variants.length === 1)
-          .map((v) => ({
-            option1: v.name || "Default Title",
-            price: v.price || price || "0.00",
-            sku: v.sku,
-          })),
+          .map((v, idx) => {
+            const variantPayload = {
+              option1: v.name || "Default Title",
+              price: v.price || price || "0.00",
+              sku: v.sku || (idx === 0 ? sku : ""),
+              compare_at_price:
+                v.compare_at_price || (idx === 0 ? comparePrice : "") || null,
+              barcode: v.barcode || (idx === 0 ? barcode : "") || null,
+            };
+
+            if (trackQty) {
+              variantPayload.inventory_management = "shopify";
+              if (idx === 0 && qty !== "") {
+                variantPayload.inventory_quantity = Number(qty);
+              }
+            }
+
+            if (isEdit && v.id) {
+              variantPayload.id = v.id;
+            }
+
+            return variantPayload;
+          }),
         images: mediaFiles.map((f) => ({
-          attachment: f.url.split(",")[1],
-          filename: f.file?.name,
+          ...(f.existing
+            ? { src: f.url }
+            : {
+                attachment: f.url.split(",")[1],
+                filename: f.file?.name,
+              }),
         })),
       };
       if (isEdit) {
@@ -1002,10 +1127,18 @@ export default function AddProductPage({ toast, onBack, editProduct }) {
             Discard
           </Btn>
           {isEdit && <Btn variant="danger">🗑 Delete</Btn>}
-          <Btn onClick={handleSave} disabled={saving} variant="primary">
+          <Btn
+            onClick={handleSave}
+            disabled={saving || loadingDetails}
+            variant="primary"
+          >
             {saving ? (
               <>
                 <Spin size={14} /> Saving…
+              </>
+            ) : loadingDetails ? (
+              <>
+                <Spin size={14} /> Loading…
               </>
             ) : isEdit ? (
               "Save changes"
@@ -1530,13 +1663,17 @@ export default function AddProductPage({ toast, onBack, editProduct }) {
           </Btn>
           <Btn
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || loadingDetails}
             variant="primary"
             style={isPhone ? { flex: 1, justifyContent: "center" } : {}}
           >
             {saving ? (
               <>
                 <Spin size={14} /> Saving…
+              </>
+            ) : loadingDetails ? (
+              <>
+                <Spin size={14} /> Loading…
               </>
             ) : isEdit ? (
               "Save changes"

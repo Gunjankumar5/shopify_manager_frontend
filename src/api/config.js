@@ -6,7 +6,6 @@ export const API_ORIGIN = origin || "http://127.0.0.1:8000";
 export const API_BASE_URL = `${API_ORIGIN}/api`;
 export const API_HEALTH_URL = `${API_ORIGIN}/health`;
 
-// optional central endpoints for new code
 export const API_ENDPOINTS = {
   products: `${API_BASE_URL}/products`,
   collections: `${API_BASE_URL}/collections/`,

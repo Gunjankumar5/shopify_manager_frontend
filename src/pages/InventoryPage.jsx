@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../api/config";
-import { Ico, Spin } from "../components/Icons"; // adjust path as needed
+import { Ico, Spin } from "../components/Icons";
 
 export default function InventoryPage() {
   const [locations, setLocations] = useState([]);
@@ -9,6 +9,7 @@ export default function InventoryPage() {
   const [error, setError] = useState(null);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -17,20 +18,19 @@ export default function InventoryPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-
-      // Fetch locations
-      const locResponse = await fetch(`${API_BASE_URL}/inventory/locations`);
-      if (!locResponse.ok) throw new Error("Failed to fetch locations");
-      const locData = await locResponse.json();
-      setLocations(locData.locations || []);
-
-      // Fetch inventory
-      const invResponse = await fetch(`${API_BASE_URL}/inventory/levels`);
-      if (!invResponse.ok) throw new Error("Failed to fetch inventory");
-      const invData = await invResponse.json();
-      setInventory(invData.inventory_levels || []);
-
       setError(null);
+
+      const [locRes, invRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/inventory/locations`),
+        fetch(`${API_BASE_URL}/inventory/levels`),
+      ]);
+      if (!locRes.ok) throw new Error("Failed to fetch locations");
+      if (!invRes.ok) throw new Error("Failed to fetch inventory");
+
+      const locData = await locRes.json();
+      const invData = await invRes.json();
+      setLocations(locData.locations || []);
+      setInventory(invData.inventory_levels || []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,6 +39,7 @@ export default function InventoryPage() {
   };
 
   const handleUpdateQuantity = async (itemId, locationId, quantity) => {
+    if (isNaN(quantity)) return;
     try {
       const response = await fetch(
         `${API_BASE_URL}/inventory/update?inventory_item_id=${itemId}&location_id=${locationId}&quantity=${quantity}`,
@@ -71,9 +72,17 @@ export default function InventoryPage() {
     );
   }
 
-  const filteredInventory = selectedLocation
+  // Filter by location, then by search
+  const byLocation = selectedLocation
     ? inventory.filter((item) => item.location_id === selectedLocation)
     : inventory;
+
+  const filteredInventory = search.trim()
+    ? byLocation.filter((item) =>
+        (item.product_title || "").toLowerCase().includes(search.toLowerCase()) ||
+        (item.variant_title || "").toLowerCase().includes(search.toLowerCase()),
+      )
+    : byLocation;
 
   return (
     <div className="min-h-screen bg-primary p-8">
@@ -159,13 +168,32 @@ export default function InventoryPage() {
 
         {/* Inventory Table */}
         <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Ico n="inventory" size="md" /> Inventory Levels
               <span className="text-sm font-normal text-muted ml-2">
                 ({filteredInventory.length} items)
               </span>
             </h2>
+            {/* Search box */}
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+                <Ico n="search" size={14} />
+              </div>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products..."
+                className="pl-9 pr-4 py-2 text-sm rounded-lg outline-none"
+                style={{
+                  background: "var(--bg-input)",
+                  border: "1px solid var(--border-strong)",
+                  color: "var(--text-primary)",
+                  width: 220,
+                }}
+              />
+            </div>
           </div>
 
           {filteredInventory.length === 0 ? (
@@ -181,13 +209,10 @@ export default function InventoryPage() {
                 <thead>
                   <tr className="bg-secondary border-b border-strong">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                      Product ID
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
                       Product
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
-                      Item ID
+                      Variant
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">
                       Location
@@ -206,27 +231,19 @@ export default function InventoryPage() {
                       key={idx}
                       className="border-b border-strong hover:bg-elevated transition-colors"
                     >
-                      <td className="px-4 py-3">
-                        <code className="bg-secondary px-2 py-1 rounded text-xs font-mono border border-subtle">
-                          {item.product_id || "-"}
-                        </code>
-                      </td>
                       <td className="px-4 py-3 text-sm text-primary max-w-xs">
-                        <div
-                          className="truncate"
-                          title={item.product_title || "Unknown"}
-                        >
+                        <div className="truncate" title={item.product_title || "Unknown"}>
                           {item.product_title || "Unknown product"}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <code className="bg-secondary px-2 py-1 rounded text-xs font-mono border border-subtle">
-                          {item.inventory_item_id}
-                        </code>
+                      <td className="px-4 py-3 text-sm text-muted">
+                        {item.variant_title && item.variant_title !== "Default Title"
+                          ? item.variant_title
+                          : "â€”"}
                       </td>
                       <td className="px-4 py-3 text-sm text-primary">
-                        {locations.find((l) => l.id === item.location_id)
-                          ?.name || `Location ${item.location_id}`}
+                        {locations.find((l) => l.id === item.location_id)?.name ||
+                          `Location ${item.location_id}`}
                       </td>
                       <td className="px-4 py-3">
                         <input
@@ -245,8 +262,11 @@ export default function InventoryPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => {
-                            const newQty = prompt("Enter new quantity:");
-                            if (newQty !== null) {
+                            const newQty = prompt(
+                              `New quantity for "${item.product_title || "item"}":`,
+                              item.available,
+                            );
+                            if (newQty !== null && !isNaN(parseInt(newQty, 10))) {
                               handleUpdateQuantity(
                                 item.inventory_item_id,
                                 item.location_id,

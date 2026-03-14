@@ -395,8 +395,8 @@ const GlobalStyles = () => (
     }
     .app-main {
       flex: 1;
-      margin-left: 220px;
-      width: calc(100vw - 220px);
+      margin-left: 260px;
+      width: calc(100vw - 260px);
       min-height: 100vh;
       padding: var(--space-8) 0;
     }

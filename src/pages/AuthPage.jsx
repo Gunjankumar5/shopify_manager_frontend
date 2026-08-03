@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { hasSupabaseConfig, supabase } from "../lib/supabaseClient";
 
 // ── Views ─────────────────────────────────────────────────────────────────────
 const VIEW = {
@@ -440,6 +440,22 @@ export default function AuthPage({ onAuth }) {
         .auth-input:-ms-input-placeholder { color: rgba(255, 255, 255, 0.72); }
       `}</style>
       <div style={S.card}>
+        {!hasSupabaseConfig && (
+          <div
+            style={{
+              marginBottom: 18,
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid rgba(245,158,11,0.28)",
+              background: "rgba(245,158,11,0.1)",
+              color: "#fde68a",
+              fontSize: 13,
+              lineHeight: 1.5,
+            }}
+          >
+            Supabase is not configured in this deployment. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel.
+          </div>
+        )}
 
         {/* ── LOGIN ── */}
         {view === VIEW.LOGIN && (

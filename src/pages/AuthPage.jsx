@@ -5,8 +5,6 @@ import { hasSupabaseConfig, supabase } from "../lib/supabaseClient";
 const VIEW = {
   LOGIN:   "login",
   SIGNUP:  "signup",
-  FORGOT:  "forgot",
-  RESET:   "reset",    // password reset (from email link)
   PENDING: "pending",  // email confirmation pending
 };
 
@@ -297,13 +295,6 @@ export default function AuthPage({ onAuth }) {
   const [success,  setSuccess]  = useState("");
 
   // ── Detect password reset link (from email) ───────────────────────────────
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery")) {
-      setView(VIEW.RESET);
-    }
-  }, []);
-
   const clear = () => { setError(""); setSuccess(""); };
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -343,36 +334,6 @@ export default function AuthPage({ onAuth }) {
     else {
       setView(VIEW.PENDING);
       setSuccess("Check your email to confirm your account!");
-    }
-    setLoading(false);
-  };
-
-  // ── Forgot password ───────────────────────────────────────────────────────
-  const handleForgot = async () => {
-    if (!email) { setError("Enter your email address"); return; }
-    setLoading(true); clear();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}`,
-    });
-    if (error) setError(error.message);
-    else setSuccess("Password reset email sent! Check your inbox.");
-    setLoading(false);
-  };
-
-  // ── Reset password ────────────────────────────────────────────────────────
-  const handleReset = async () => {
-    if (!newPass) { setError("Enter a new password"); return; }
-    if (newPass !== newConf) { setError("Passwords do not match"); return; }
-    if (newPass.length < 6) { setError("Password must be at least 6 characters"); return; }
-    setLoading(true); clear();
-    const { error } = await supabase.auth.updateUser({ password: newPass });
-    if (error) setError(error.message);
-    else {
-      setSuccess("Password updated! Redirecting to login...");
-      setTimeout(() => {
-        window.location.hash = "";
-        setView(VIEW.LOGIN);
-      }, 2000);
     }
     setLoading(false);
   };
@@ -437,12 +398,6 @@ export default function AuthPage({ onAuth }) {
             <Input label="Password" type="password" value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••" autoComplete="current-password" />
-
-            <div style={{ textAlign: "right", marginBottom: 16, marginTop: -8 }}>
-              <button style={S.link} onClick={() => { clear(); setView(VIEW.FORGOT); }}>
-                Forgot password?
-              </button>
-            </div>
 
             <button type="submit" style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }}
               disabled={loading}>
@@ -517,60 +472,6 @@ export default function AuthPage({ onAuth }) {
                 Sign in
               </button>
             </div>
-          </form>
-        )}
-
-        {/* ── FORGOT PASSWORD ── */}
-        {view === VIEW.FORGOT && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleForgot();
-            }}
-          >
-            <Header title="Reset password" subtitle="Enter your email and we'll send you a reset link" />
-            {error   && <div style={S.error}>❌ {error}</div>}
-            {success && <div style={S.success}>✅ {success}</div>}
-
-            <Input label="Email" type="email" value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com" autoComplete="email" />
-
-            <button type="submit" style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }}
-              disabled={loading}>
-              {loading ? <Spin /> : "Send reset link"}
-            </button>
-
-            <button style={S.btnSecondary}
-              onClick={() => { clear(); setView(VIEW.LOGIN); }}>
-              ← Back to login
-            </button>
-          </form>
-        )}
-
-        {/* ── RESET PASSWORD (from email link) ── */}
-        {view === VIEW.RESET && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleReset();
-            }}
-          >
-            <Header title="Set new password" subtitle="Choose a strong password for your account" />
-            {error   && <div style={S.error}>❌ {error}</div>}
-            {success && <div style={S.success}>✅ {success}</div>}
-
-            <Input label="New Password" type="password" value={newPass}
-              onChange={e => setNewPass(e.target.value)}
-              placeholder="Min 6 characters" autoComplete="new-password" />
-            <Input label="Confirm New Password" type="password" value={newConf}
-              onChange={e => setNewConf(e.target.value)}
-              placeholder="Repeat new password" autoComplete="new-password" />
-
-            <button type="submit" style={{ ...S.btn, ...(loading ? S.btnDisabled : {}) }}
-              disabled={loading}>
-              {loading ? <Spin /> : "Update password"}
-            </button>
           </form>
         )}
 

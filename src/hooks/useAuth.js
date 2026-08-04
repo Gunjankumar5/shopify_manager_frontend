@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { hasSupabaseConfig, supabase } from "../lib/supabaseClient";
+import { authFetch } from "../lib/authFetch";
 
 const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || "http://127.0.0.1:8000").replace(/\/$/, "");
 const API_BASE_URL = `${API_ORIGIN}/api`;
@@ -88,17 +89,10 @@ export function useAuth() {
     }
     onboardingAttemptedRef.current.add(authUser.id);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) {
-      return false;
-    }
-
-    const res = await fetch(`${API_BASE_URL}/users/me/role`, {
+    const res = await authFetch(`${API_BASE_URL}/users/me/role`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         role: desiredRole,
@@ -133,23 +127,22 @@ export function useAuth() {
     try {
       setLoading(true);
 
-      // Fetch user with role
-      let { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id, email, full_name, role, is_active, avatar_url, created_by")
-        .eq("id", userId)
-        .single();
-
-      if (userError) {
-        console.error("User fetch error:", userError);
-        // Set defaults and stop trying to fetch
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
         setRole(null);
         setPermissions({});
-        setLoading(false);
         return;
       }
 
-      if (!userData) {
+      const userRes = await authFetch(`${API_BASE_URL}/users/me`);
+      if (!userRes.ok) {
+        const err = await userRes.json().catch(() => ({}));
+        throw new Error(err.detail || err.message || `HTTP ${userRes.status}`);
+      }
+
+      let userData = await userRes.json();
+      if (!userData || !userData.id) {
         console.error("No user data returned");
         setRole(null);
         setPermissions({});
@@ -159,66 +152,15 @@ export function useAuth() {
 
       const onboardingApplied = await maybeApplySignupRole(authUser, userData);
       if (onboardingApplied) {
-        const refreshed = await supabase
-          .from("users")
-          .select("id, email, full_name, role, is_active, avatar_url, created_by")
-          .eq("id", userId)
-          .single();
-        userData = refreshed.data;
-        userError = refreshed.error;
+        const refreshedRes = await authFetch(`${API_BASE_URL}/users/me`);
+        if (!refreshedRes.ok) {
+          const err = await refreshedRes.json().catch(() => ({}));
+          throw new Error(err.detail || err.message || `HTTP ${refreshedRes.status}`);
+        }
+        userData = await refreshedRes.json();
       }
 
-      // Fetch user permissions
-      let permData = {};
-      try {
-        const { data, error: permError } = await supabase
-          .from("user_permissions")
-          .select(PERMISSION_SELECT)
-          .eq("user_id", userId)
-          .single();
-
-        if (!permError && data) {
-          permData = data;
-        } else if (permError && permError.code !== "PGRST116") {
-          // PGRST116 = no rows found (expected for new users)
-          console.warn("Permissions fetch warning:", permError);
-        }
-
-        // If user is admin and no permissions yet, grant all
-        if (userData.role === "admin" && Object.keys(permData).length === 0) {
-          permData = {
-            manage_products: true,
-            delete_products: true,
-            manage_collections: true,
-            manage_inventory: true,
-            manage_metafields: true,
-            manage_upload: true,
-            manage_export: true,
-            use_ai: true,
-            manage_stores: true,
-            manage_users: true,
-            view_analytics: true,
-          };
-        }
-      } catch (err) {
-        console.warn("Permissions error:", err);
-        // For admins, grant all permissions anyway
-        if (userData.role === "admin") {
-          permData = {
-            manage_products: true,
-            delete_products: true,
-            manage_collections: true,
-            manage_inventory: true,
-            manage_metafields: true,
-            manage_upload: true,
-            manage_export: true,
-            use_ai: true,
-            manage_stores: true,
-            manage_users: true,
-            view_analytics: true,
-          };
-        }
-      }
+      const permData = userData.permissions || {};
 
       setPermissions(permData || {});
       setRole(userData.role || null);

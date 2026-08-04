@@ -64,39 +64,6 @@ export default function LoginPage() {
     setShowPassword(false);
   };
 
-  const handleForgotPassword = async () => {
-    setError("");
-    setMessage("");
-
-    if (!hasSupabaseConfig || !supabase) {
-      setError(
-        "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.",
-      );
-      return;
-    }
-
-    if (!trimmedEmail) {
-      setError("Enter your email first, then use forgot password.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        trimmedEmail,
-        {
-          redirectTo: `${window.location.origin}/`,
-        },
-      );
-      if (resetError) throw resetError;
-      setMessage("If the email exists, a password reset link has been sent.");
-    } catch (e) {
-      setError(e?.message || "Unable to send reset email.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -474,26 +441,6 @@ export default function LoginPage() {
                   {passwordChecks.number ? "✓" : "○"} Includes a number
                 </div>
               </div>
-            )}
-
-            {mode === "signin" && (
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                disabled={loading}
-                style={{
-                  justifySelf: "start",
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--accent)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  padding: 0,
-                }}
-              >
-                Forgot password?
-              </button>
             )}
 
             {isLocked && (

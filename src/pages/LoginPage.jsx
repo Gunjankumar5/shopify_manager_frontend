@@ -168,7 +168,18 @@ export default function LoginPage() {
         setCooldownUntil(Math.floor(Date.now() / 1000) + 30);
         setError("Too many failed attempts. Please wait 30s before trying again.");
       } else {
-        setError(e?.message || "Authentication failed.");
+        const errorMessage = String(e?.message || "").toLowerCase();
+        const needsConfirmation =
+          mode === "signin" &&
+          (e?.code === "email_not_confirmed" ||
+            errorMessage.includes("email not confirmed") ||
+            errorMessage.includes("invalid login credentials"));
+
+        setError(
+          needsConfirmation
+            ? "Login failed. Confirm your email address from the Supabase confirmation email, then try again. If you already confirmed it, check that the password is correct."
+            : e?.message || "Authentication failed.",
+        );
       }
     } finally {
       setLoading(false);

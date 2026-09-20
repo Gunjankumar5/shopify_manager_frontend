@@ -31,6 +31,9 @@ export default function LoginPage() {
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [signupRole, setSignupRole] = useState("admin");
+  const [adminEmail, setAdminEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -108,6 +111,20 @@ export default function LoginPage() {
       return;
     }
 
+    if (mode === "signup" && !fullName.trim()) {
+      setError("Full name is required.");
+      return;
+    }
+
+    if (
+      mode === "signup" &&
+      (signupRole === "manager" || signupRole === "junior") &&
+      !adminEmail.trim()
+    ) {
+      setError("Admin email is required for manager or junior accounts.");
+      return;
+    }
+
     if (
       mode === "signup" &&
       (!passwordChecks.length || !passwordChecks.letter || !passwordChecks.number)
@@ -128,6 +145,16 @@ export default function LoginPage() {
         const { error: signUpError } = await supabase.auth.signUp({
           email: trimmedEmail,
           password,
+          options: {
+            data: {
+              full_name: fullName.trim(),
+              desired_role: signupRole,
+              admin_email:
+                signupRole === "manager" || signupRole === "junior"
+                  ? adminEmail.trim().toLowerCase()
+                  : null,
+            },
+          },
         });
         if (signUpError) throw signUpError;
         setMessage("Account created. Check your email to confirm your account, then sign in.");
@@ -531,6 +558,107 @@ export default function LoginPage() {
                 }}
               />
             </label>
+
+            {mode === "signup" && (
+              <>
+                <label style={{ display: "grid", gap: 8 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Full name
+                  </span>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    autoComplete="name"
+                    placeholder="Your full name"
+                    style={{
+                      width: "100%",
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "rgba(255,255,255,0.04)",
+                      color: "var(--text-primary)",
+                      WebkitTextFillColor: "var(--text-primary)",
+                      caretColor: "var(--text-primary)",
+                      padding: "14px 16px",
+                      outline: "none",
+                    }}
+                  />
+                </label>
+
+                <label style={{ display: "grid", gap: 8 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Account role
+                  </span>
+                  <select
+                    value={signupRole}
+                    onChange={(e) => setSignupRole(e.target.value)}
+                    style={{
+                      width: "100%",
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "#171a26",
+                      color: "var(--text-primary)",
+                      padding: "14px 16px",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="junior">Junior</option>
+                  </select>
+                </label>
+
+                {(signupRole === "manager" || signupRole === "junior") && (
+                  <label style={{ display: "grid", gap: 8 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "var(--text-muted)",
+                      }}
+                    >
+                      Admin email
+                    </span>
+                    <input
+                      type="email"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      autoComplete="off"
+                      placeholder="admin@company.com"
+                      style={{
+                        width: "100%",
+                        borderRadius: 16,
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "rgba(255,255,255,0.04)",
+                        color: "var(--text-primary)",
+                        WebkitTextFillColor: "var(--text-primary)",
+                        caretColor: "var(--text-primary)",
+                        padding: "14px 16px",
+                        outline: "none",
+                      }}
+                    />
+                  </label>
+                )}
+              </>
+            )}
 
             <label style={{ display: "grid", gap: 8 }}>
               <span

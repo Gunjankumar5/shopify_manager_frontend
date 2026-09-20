@@ -37,6 +37,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [canResendConfirmation, setCanResendConfirmation] = useState(false);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [cooldownUntil, setCooldownUntil] = useState(0);
@@ -88,7 +90,26 @@ export default function LoginPage() {
     setMode(nextMode);
     setError("");
     setMessage("");
+    setCanResendConfirmation(false);
     setShowPassword(false);
+  };
+
+  const resendConfirmation = async () => {
+    if (!supabase || !trimmedEmail) return;
+
+    setResendingConfirmation(true);
+    setError("");
+    setMessage("");
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: trimmedEmail,
+    });
+    if (resendError) {
+      setError(resendError.message || "Could not resend the confirmation email.");
+    } else {
+      setMessage("A new confirmation email was requested. Check your inbox and spam folder.");
+    }
+    setResendingConfirmation(false);
   };
 
   const handleSubmit = async (event) => {
@@ -158,6 +179,7 @@ export default function LoginPage() {
         });
         if (signUpError) throw signUpError;
         setMessage("Account created. Check your email to confirm your account, then sign in.");
+        setCanResendConfirmation(true);
         setMode("signin");
       }
       setFailedAttempts(0);
@@ -174,6 +196,8 @@ export default function LoginPage() {
           (e?.code === "email_not_confirmed" ||
             errorMessage.includes("email not confirmed") ||
             errorMessage.includes("invalid login credentials"));
+
+          setCanResendConfirmation(needsConfirmation);
 
         setError(
           needsConfirmation
@@ -811,6 +835,26 @@ export default function LoginPage() {
               >
                 {error}
               </div>
+            )}
+
+            {canResendConfirmation && mode === "signin" && (
+              <button
+                type="button"
+                onClick={resendConfirmation}
+                disabled={resendingConfirmation || !trimmedEmail}
+                style={{
+                  border: "1px solid rgba(99,102,241,0.35)",
+                  borderRadius: 14,
+                  padding: "11px 14px",
+                  background: "rgba(99,102,241,0.1)",
+                  color: "#c7d2fe",
+                  fontWeight: 700,
+                  cursor: resendingConfirmation ? "not-allowed" : "pointer",
+                  opacity: resendingConfirmation ? 0.7 : 1,
+                }}
+              >
+                {resendingConfirmation ? "Sending confirmation..." : "Resend confirmation email"}
+              </button>
             )}
 
             {message && (
